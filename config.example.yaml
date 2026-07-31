@@ -1,0 +1,71 @@
+# AI Daily Agent Configuration (示例模板)
+# 复制本文件为 config.yaml 并填入你的真实 GitHub Token 后使用
+app:
+  name: "AI Daily Agent"
+  version: "1.0.0"
+  timezone: "Asia/Shanghai"
+
+# GitHub Configuration
+github:
+  username: "your_github_username"
+  token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"   # 替换为你的 Personal Access Token
+  repo_prefix: "ai-daily-"
+  branch: "main"
+  visibility: "public"
+
+# Hot topic sources
+sources:
+  - name: "web_search"
+    enabled: true
+    keywords:
+      - "AI breakthrough 2026"
+      - "LLM new release"
+    max_topics: 5
+  - name: "github_trending"
+    enabled: true
+    languages: ["python", "typescript", "rust"]
+    since: "daily"
+  - name: "huggingface"
+    enabled: true
+    model_types: ["text-generation", "multimodal"]
+
+# Project generation settings
+generator:
+  tech_stacks:
+    - name: "python_tool"
+      description: "Python CLI tool or library"
+      language: "python"
+      template: "python_project"
+  readme:
+    include_badges: true
+    languages: ["zh-CN", "en"]
+  quality:
+    must_have_tests: true
+    must_have_dockerfile: true
+    must_have_ci: true
+
+# Monitor settings
+monitor:
+  metrics:
+    - "stars"
+    - "forks"
+    - "watchers"
+    - "issues"
+    - "commits"
+  notifications:
+    enabled: true
+    on_star_milestone: true
+    star_milestones: [1, 5, 10, 50, 100, 500]
+  report:
+    period_days: 7
+    top_n: 5
+  data_cleaner:
+    retention_days: 90
+    enabled: true
+
+# Logging
+logging:
+  level: "INFO"
+  file: "data/logs/agent.log"
+  max_size_mb: 10
+  backup_count: 30

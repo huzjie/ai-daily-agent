@@ -1,0 +1,33 @@
+# ===== 敏感信息（绝不提交）=====
+.env
+config.yaml
+*.token
+
+# ===== 运行时本地数据 =====
+data/metrics/
+data/reports/
+data/projects/
+data/logs/
+data/topics_history.json
+data/published_repos.json
+
+# ===== 临时 / 工具脚本 =====
+_run_monitor.py
+nul
+*.log
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# ===== 内部工作目录 =====
+.workbuddy/
+
+# ===== 编辑器 =====
+.vscode/
+.idea/
+*.swp
