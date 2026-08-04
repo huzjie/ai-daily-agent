@@ -127,9 +127,19 @@ class TestGhCliClient:
             },
         ])
 
+        # 不传 prefix：返回全部仓库（客户端层不再硬编码 ai-daily- 过滤，
+        # 否则 loopforge 等旗舰项目会被静默丢弃）
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout=mock_data)
             repos = client.list_user_repos("testuser")
+
+            assert len(repos) == 2
+            assert {r.name for r in repos} == {"ai-daily-test-1", "other-repo"}
+
+        # 显式传 prefix：仅返回匹配前缀的仓库
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout=mock_data)
+            repos = client.list_user_repos("testuser", prefix="ai-daily-")
 
             assert len(repos) == 1
             assert repos[0].name == "ai-daily-test-1"
@@ -238,9 +248,15 @@ class TestRestApiClient:
             },
         ]
 
+        # 不传 prefix：返回全部 3 个仓库，含非 ai-daily- 前缀的项目
         with patch.object(client.session, "get", return_value=mock_response):
             repos = client.list_user_repos("testuser")
-            # Should only include ai-daily-* repos
+            assert len(repos) == 3
+            assert "other-project" in {r.name for r in repos}
+
+        # 显式传 prefix：仅保留匹配前缀的 2 个仓库
+        with patch.object(client.session, "get", return_value=mock_response):
+            repos = client.list_user_repos("testuser", prefix="ai-daily-")
             assert len(repos) == 2
             assert all(r.name.startswith("ai-daily-") for r in repos)
 

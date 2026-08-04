@@ -60,9 +60,11 @@ class RepoMonitor:
 
         # Try to initialize GitHub client (may fail if no auth configured)
         try:
-            # 本环境通过 config 中的 token 走 REST API 最可靠；
-            # gh CLI 未认证时会走 GraphQL 报字段错误，故优先 REST。
-            self.github_client = GitHubAPIClient(config, prefer_cli=False)
+            # 默认走 REST API：config 中已有 token，最可靠；
+            # gh CLI 未认证时会走 GraphQL 报字段错误。
+            # 需要优先使用 gh CLI 时，设置 monitor.prefer_gh_cli: true。
+            prefer_cli = bool(self.monitor_config.get("prefer_gh_cli", False))
+            self.github_client = GitHubAPIClient(config, prefer_cli=prefer_cli)
             self.repo_discovery = RepoDiscoveryService(self.github_client, config)
             self.rate_limiter = RateLimiter(self.github_client)
             logger.info(
@@ -359,11 +361,10 @@ class RepoMonitor:
 
         for repo_name, metrics in latest_record.repos.items():
             stars = metrics.stars
-            # Find the highest milestone reached
-            reached_milestone = None
-            for milestone in milestones:
-                if stars >= milestone:
-                    reached_milestone = milestone
+            # 取已达成里程碑中的最大值；不能依赖 milestones 的书写顺序，
+            # 否则传入 [50, 10] 时会错误地返回 10。
+            reached = [m for m in milestones if stars >= m]
+            reached_milestone = max(reached) if reached else None
             if reached_milestone is not None:
                 milestone_repos.append({
                     "name": repo_name,

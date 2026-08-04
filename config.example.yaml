@@ -46,6 +46,27 @@ generator:
 
 # Monitor settings
 monitor:
+  # 追踪范围策略（决定哪些仓库会被纳入指标监控）
+  # mode:
+  #   all       - 追踪账号下全部仓库（默认，推荐）
+  #   prefix    - 仅追踪 github.repo_prefix 前缀的仓库
+  #   whitelist - 仅追踪下方 include 显式列出的仓库
+  #
+  # 注意：早期版本在 API 客户端层硬编码了 "ai-daily-" 前缀过滤，
+  # 会导致不带该前缀的项目被静默漏采。现已改为此处配置驱动。
+  tracking:
+    mode: "all"
+    # 强制纳入（支持 * 通配符），跨模式生效
+    include: []
+    # 强制排除（支持 * 通配符），优先级高于 include
+    exclude:
+      - "_stale-*"
+    exclude_forks: true
+    exclude_archived: false
+
+  # 优先使用 gh CLI；默认 false，即使用 config 中 token 走 REST API
+  prefer_gh_cli: false
+
   metrics:
     - "stars"
     - "forks"

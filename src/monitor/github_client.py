@@ -123,7 +123,7 @@ class GhCliClient(GitHubClientBase):
             cmd = [
                 "gh", "repo", "list", owner,
                 "--limit", "200",
-                "--json", "name,fullName,url,description,createdAt,stargazerCount,forkCount,subscribersCount",
+                "--json", "name,fullName,url,description,createdAt,pushedAt,stargazerCount,forkCount,primaryLanguage,isFork,isArchived",
             ]
             result = subprocess.run(
                 cmd,
@@ -138,10 +138,9 @@ class GhCliClient(GitHubClientBase):
             data = json.loads(result.stdout)
             for repo_data in data:
                 repo_name = repo_data.get("name", "")
-                # Skip non ai-daily repos
-                if not repo_name.startswith("ai-daily-"):
-                    continue
-                # Apply prefix filter
+                # 仅按调用方显式传入的 prefix 过滤；
+                # 不再硬编码 "ai-daily-" 前缀，否则会漏掉旗舰项目。
+                # 过滤策略统一由 RepoDiscoveryService 依据配置决定。
                 if prefix and not repo_name.startswith(prefix):
                     continue
 
@@ -149,13 +148,18 @@ class GhCliClient(GitHubClientBase):
                     name=repo_name,
                     full_name=repo_data.get("fullName", f"{owner}/{repo_name}"),
                     url=repo_data.get("url", ""),
-                    description=repo_data.get("description", ""),
+                    description=repo_data.get("description", "") or "",
                     metrics=RepositoryMetrics(
                         stars=repo_data.get("stargazerCount", 0),
                         forks=repo_data.get("forkCount", 0),
                         watchers=repo_data.get("subscribersCount", 0),
                     ),
                     published_at=repo_data.get("createdAt", ""),
+                    language=(repo_data.get("primaryLanguage") or {}).get("name", "")
+                        if isinstance(repo_data.get("primaryLanguage"), dict) else "",
+                    is_fork=repo_data.get("isFork", False),
+                    archived=repo_data.get("isArchived", False),
+                    pushed_at=repo_data.get("pushedAt", ""),
                 )
                 repos.append(repo)
 
@@ -249,11 +253,9 @@ class RestApiClient(GitHubClientBase):
                 for repo_data in data:
                     repo_name = repo_data.get("name", "")
 
-                    # Skip non ai-daily repos
-                    if not repo_name.startswith("ai-daily-"):
-                        continue
-
-                    # Apply prefix filter
+                    # 仅按调用方显式传入的 prefix 过滤；
+                    # 不再硬编码 "ai-daily-" 前缀，否则 loopforge / unified-ai-gateway
+                    # 等旗舰项目会被静默丢弃。过滤策略统一交由 RepoDiscoveryService。
                     if prefix and not repo_name.startswith(prefix):
                         continue
 
@@ -261,7 +263,7 @@ class RestApiClient(GitHubClientBase):
                         name=repo_name,
                         full_name=repo_data.get("full_name", ""),
                         url=repo_data.get("html_url", ""),
-                        description=repo_data.get("description", ""),
+                        description=repo_data.get("description", "") or "",
                         metrics=RepositoryMetrics(
                             stars=repo_data.get("stargazers_count", 0),
                             forks=repo_data.get("forks_count", 0),
@@ -270,6 +272,13 @@ class RestApiClient(GitHubClientBase):
                             last_updated=repo_data.get("updated_at", ""),
                         ),
                         published_at=repo_data.get("created_at", ""),
+                        language=repo_data.get("language", "") or "",
+                        size_kb=repo_data.get("size", 0),
+                        topics=repo_data.get("topics", []) or [],
+                        archived=repo_data.get("archived", False),
+                        is_fork=repo_data.get("fork", False),
+                        homepage=repo_data.get("homepage", "") or "",
+                        pushed_at=repo_data.get("pushed_at", ""),
                     )
                     repos.append(repo)
 

@@ -84,16 +84,27 @@ class TestRepoMonitorIntegration:
                 assert monitor.repo_discovery is None
 
     def test_init_with_github_auth(self):
-        """Test RepoMonitor initializes with GitHub auth."""
+        """Test RepoMonitor initializes with GitHub auth (REST by default)."""
         config = self._make_config()
 
-        with patch("src.monitor.github_client.GhCliClient.check_auth", return_value=True):
+        # 默认优先 REST API（config 中已有 token），不依赖 gh CLI 登录态
+        with patch("src.monitor.github_client.RestApiClient.check_auth", return_value=True):
             monitor = RepoMonitor(config)
             assert monitor.github_client is not None
             assert monitor.repo_discovery is not None
             assert monitor.report_generator is not None
             assert monitor.rate_limiter is not None
             assert monitor.data_cleaner is not None
+
+    def test_init_prefers_gh_cli_when_configured(self):
+        """monitor.prefer_gh_cli 为 true 时应优先使用 gh CLI。"""
+        config = self._make_config()
+        config.setdefault("monitor", {})["prefer_gh_cli"] = True
+
+        with patch("src.monitor.github_client.GhCliClient.check_auth", return_value=True):
+            monitor = RepoMonitor(config)
+            assert monitor.github_client is not None
+            assert monitor.github_client.get_client_type().value == "gh_cli"
 
     def test_record_metrics_legacy_format(self):
         """Test recording metrics with legacy dict format."""

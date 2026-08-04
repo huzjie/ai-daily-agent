@@ -68,6 +68,14 @@ class Repository:
     metrics: RepositoryMetrics = field(default_factory=RepositoryMetrics)
     published_at: str = ""  # ISO 8601
     last_monitored: str = ""  # ISO 8601
+    # --- 组合管理增强字段 ---
+    language: str = ""           # 主语言
+    size_kb: int = 0             # 仓库体积 (KB)
+    topics: List[str] = field(default_factory=list)  # GitHub topics 标签
+    archived: bool = False       # 是否已归档
+    is_fork: bool = False        # 是否为 fork
+    homepage: str = ""           # 主页链接
+    pushed_at: str = ""          # 最后一次 push 时间
 
     def to_dict(self) -> Dict:
         """Convert to dictionary representation."""
@@ -81,6 +89,13 @@ class Repository:
             "metrics": self.metrics.to_dict(),
             "published_at": self.published_at,
             "last_monitored": self.last_monitored,
+            "language": self.language,
+            "size_kb": self.size_kb,
+            "topics": self.topics,
+            "archived": self.archived,
+            "is_fork": self.is_fork,
+            "homepage": self.homepage,
+            "pushed_at": self.pushed_at,
         }
 
     @classmethod
@@ -97,6 +112,13 @@ class Repository:
             metrics=RepositoryMetrics.from_dict(metrics_data),
             published_at=data.get("published_at", ""),
             last_monitored=data.get("last_monitored", ""),
+            language=data.get("language", "") or "",
+            size_kb=data.get("size_kb", 0),
+            topics=data.get("topics", []),
+            archived=data.get("archived", False),
+            is_fork=data.get("is_fork", False),
+            homepage=data.get("homepage", "") or "",
+            pushed_at=data.get("pushed_at", ""),
         )
 
 
