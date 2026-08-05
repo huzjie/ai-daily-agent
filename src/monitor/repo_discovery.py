@@ -65,6 +65,7 @@ class RepoDiscoveryService:
         self.exclude: List[str] = list(tracking.get("exclude", []) or [])
         self.exclude_forks: bool = bool(tracking.get("exclude_forks", True))
         self.exclude_archived: bool = bool(tracking.get("exclude_archived", False))
+        self.exclude_meta: bool = bool(tracking.get("exclude_meta", False))
 
     def discover_all_repos(self) -> List[Repository]:
         """
@@ -115,6 +116,10 @@ class RepoDiscoveryService:
             return False
         if self.exclude_archived and repo.archived:
             logger.debug(f"Skip archived: {name}")
+            return False
+        # 账号级元仓库（如 .github 默认社区健康文件仓库），非项目
+        if self.exclude_meta and name == ".github":
+            logger.debug(f"Skip meta repo: {name}")
             return False
         if self._match_any(name, self.exclude):
             logger.debug(f"Skip by exclude rule: {name}")
