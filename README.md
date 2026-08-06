@@ -402,3 +402,8 @@ MIT License
 *每天一个 AI 项目，让你的 GitHub 成为技术前沿的代名词 🚀*
 
 </div>
+---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=huzjie/ai-daily-agent&type=Date)](https://star-history.com/#huzjie/ai-daily-agent&Date)
