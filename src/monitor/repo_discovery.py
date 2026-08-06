@@ -121,6 +121,10 @@ class RepoDiscoveryService:
         if self.exclude_meta and name == ".github":
             logger.debug(f"Skip meta repo: {name}")
             return False
+        # 同名 profile README 仓库（如 huzjie/huzjie），非项目仓库
+        if self.exclude_meta and name == self.username:
+            logger.debug(f"Skip profile repo: {name}")
+            return False
         if self._match_any(name, self.exclude):
             logger.debug(f"Skip by exclude rule: {name}")
             return False

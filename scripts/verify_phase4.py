@@ -14,6 +14,7 @@
 
 用法：C:/Python312/python.exe scripts/verify_phase4.py
 """
+import base64
 import json
 import os
 import sys
@@ -61,6 +62,20 @@ def api(path):
         return None
     r.raise_for_status()
     return r.json()
+
+
+def fetch_file(repo, path):
+    """通过 api.github.com contents API 获取文件文本（避免 raw.githubusercontent.com 网络不稳定导致误报）"""
+    data = api(f"/repos/{OWNER}/{repo}/contents/{path}")
+    if not data:
+        return None
+    if isinstance(data, dict) and data.get("content"):
+        return base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+    if isinstance(data, dict) and data.get("download_url"):
+        r = requests.get(data["download_url"], timeout=30)
+        r.raise_for_status()
+        return r.text
+    return None
 
 
 def get_workflow_files(repo):
@@ -129,10 +144,9 @@ def main():
                 check(f"{repo} 有 workflow 可检查", False, "无 workflow")
             continue
         for wf_name in wfs:
-            try:
-                content = requests.get(wfs[wf_name]["download_url"], timeout=30).text
-            except Exception as e:
-                check(f"{repo}/{wf_name} 可读取", False, str(e))
+            content = fetch_file(repo, f".github/workflows/{wf_name}")
+            if content is None:
+                check(f"{repo}/{wf_name} 可读取", False, "contents API 获取失败")
                 continue
             lines = content.splitlines()
             # 顶层 permissions: 块必须存在（第 0 列缩进）
@@ -179,15 +193,7 @@ def main():
     for repo in SCORECARD_TARGET:
         wfs = get_workflow_files(repo)
         has_sc = any("scorecard" in n.lower() for n in wfs)
-        readme = None
-        try:
-            r = requests.get(
-                f"https://raw.githubusercontent.com/{OWNER}/{repo}/main/README.md",
-                timeout=30)
-            if r.status_code == 200:
-                readme = r.text
-        except Exception:
-            pass
+        readme = fetch_file(repo, "README.md")
         has_badge = bool(readme) and "scorecard" in readme.lower()
         check(f"{repo} scorecard.yml 存在", has_sc, list(wfs.keys()) if wfs else "无")
         check(f"{repo} README 含 scorecard 徽章", has_badge)
@@ -217,9 +223,7 @@ def main():
     else:
         check("vfs 仓库可访问", False)
     try:
-        readme = requests.get(
-            "https://raw.githubusercontent.com/huzjie/video-forge-studio/main/README.md",
-            timeout=30).text
+        readme = fetch_file("video-forge-studio", "README.md") or ""
         check("vfs README 含对比表", "ComfyUI" in readme and "OpenMontage" in readme)
         check("vfs README 声明引擎被编排关系",
               "not" in readme.lower() or "compatib" in readme.lower() or "orchestrat" in readme.lower())
@@ -233,11 +237,9 @@ def main():
         prof = api("/repos/" + OWNER + "/" + OWNER)
         check("huzjie/huzjie 仓库存在", bool(prof))
         if prof:
-            readme = requests.get(
-                f"https://raw.githubusercontent.com/{OWNER}/{OWNER}/main/README.md",
-                timeout=30)
-            check("Profile README 非空", readme.status_code == 200 and len(readme.text) > 100,
-                  f"len={len(readme.text) if readme.status_code == 200 else 'N/A'}")
+            readme = fetch_file(OWNER, "README.md") or ""
+            check("Profile README 非空", len(readme) > 100,
+                  f"len={len(readme)}")
     except Exception as e:
         check("huzjie/huzjie 仓库存在", False, str(e))
 
