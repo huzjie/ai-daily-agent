@@ -784,17 +784,34 @@ def step_c1_codeql(gh: GitHub) -> None:
 # --------------------------------------------------------------------------- #
 def step_c2_dependabot(gh: GitHub) -> None:
     """Inspect open dependabot alerts and open PRs; report classification."""
+    import re as _re
     for repo in FLAGSHIPS:
-        code, body = gh.get(
-            f"/repos/{gh.user}/{repo}/dependabot/alerts?state=open&per_page=30"
-        )
-        if code != 200:
-            if code == 404:
+        # Dependabot API uses cursor pagination (no ?page=). Follow Link header.
+        alerts: List[Dict[str, Any]] = []
+        url = f"/repos/{gh.user}/{repo}/dependabot/alerts?state=open&per_page=100"
+        last_code = 0
+        while url:
+            resp = gh.session.get(API_ROOT + url, timeout=TIMEOUT)
+            last_code = resp.status_code
+            if resp.status_code != 200:
+                break
+            try:
+                body = resp.json()
+            except ValueError:
+                body = None
+            if isinstance(body, list):
+                alerts.extend(body)
+            link = resp.headers.get("Link", "")
+            m = _re.search(r'<([^>]+)>;\s*rel="next"', link)
+            url = m.group(1).replace(API_ROOT, "") if m else None
+            if not isinstance(body, list) or len(body) < 100:
+                break
+        if last_code != 200:
+            if last_code == 404:
                 LEDGER.add("skipped", repo, "dependabot", "not enabled (404)")
             else:
-                LEDGER.add("failed", repo, "dependabot", f"HTTP {code}")
+                LEDGER.add("failed", repo, "dependabot", f"HTTP {last_code}")
             continue
-        alerts = body if isinstance(body, list) else []
         # Count by severity
         sev: Counter = Counter()
         for a in alerts:
@@ -822,6 +839,7 @@ def step_c2_dependabot(gh: GitHub) -> None:
             if majors:
                 LEDGER.add("verify", repo, "dependabot-prs",
                            "; ".join(majors[:12]))
+
             else:
                 LEDGER.add("skipped", repo, "dependabot-prs", "no open dep PRs")
 
